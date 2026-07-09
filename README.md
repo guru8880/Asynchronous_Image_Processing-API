@@ -1,183 +1,145 @@
-### **📄 README.md**  
+# Asynchronous Image Processing API
 
-# **📦 Asynchronous Image Processing API**  
-A **Flask + Celery + SQLite** backend system for processing images asynchronously from a CSV file. The system:  
-✅ Accepts a CSV file with product names and image URLs  
-✅ Compresses images asynchronously using **Celery**  
-✅ Stores processed image details in **SQLite**  
-✅ Provides an API to check processing status  
-✅ Supports **webhook notifications** after processing  
+A Flask and Celery backend that accepts image URLs in a CSV file, processes the images in the background, records job state in SQLite, and sends a completion webhook.
 
----
+## Overview
 
-## **🚀 Tech Stack**
-- **Backend:** Flask  
-- **Asynchronous Processing:** Celery (Redis as the broker)  
-- **Database:** SQLite  
-- **Image Processing:** Pillow  
-- **API Testing:** Postman  
+The API separates request handling from image work so an upload can return immediately with a tracking ID. A Celery worker downloads each image, saves a compressed version, writes the resulting paths to a new CSV, and updates the job status.
 
----
+## Architecture
 
-## **📁 Project Structure**
-```
-/backend
-│── app.py                 # Main Flask API
-│── celery_worker.py        # Celery worker setup
-│── config.py               # Configuration settings
-│── models.py               # Database models
-│── tasks.py                # Celery tasks for image processing
-│── webhook.py              # Webhook handler
-│── database.db             # SQLite database (auto-created)
-│── uploads/                # Folder to store images
-│── requirements.txt        # Python dependencies
-│── README.md               # Documentation
+```mermaid
+flowchart LR
+    A[Client uploads CSV] --> B[Flask API]
+    B --> C[SQLite job record]
+    B --> D[Redis queue]
+    D --> E[Celery worker]
+    E --> F[Download and save images]
+    F --> G[Processed CSV]
+    G --> C
+    G --> H[Webhook notification]
 ```
 
----
+## Features
 
-## **📌 API Endpoints**
+- CSV upload through a REST endpoint
+- UUID-based request tracking
+- asynchronous processing with Celery and Redis
+- SQLite persistence with Flask-SQLAlchemy
+- image download and quality reduction with Pillow
+- processed CSV generation
+- completion webhook
+- included Postman collection and sample CSV
 
-### **1️⃣ Upload CSV**
-- **📍 Endpoint:** `POST /upload`  
-- **📩 Request Type:** `multipart/form-data`  
-- **🔢 Parameters:**  
-  - `file`: CSV file with **`Serial Number, Product Name, Input Image Urls`**  
-- **📤 Response:**
-  ```json
-  {
-    "request_id": "123e4567-e89b-12d3-a456-426614174000"
-  }
-  ```
-- **📌 Description:** Uploads a CSV file and returns a unique `request_id`.  
+## API
 
----
+### Upload a CSV
 
-### **2️⃣ Check Processing Status**
-- **📍 Endpoint:** `GET /status/<request_id>`  
-- **📩 Request Type:** `GET`  
-- **🔢 Parameters:**  
-  - `request_id` (string): Unique ID from the upload request  
-- **📤 Response (Processing)**  
-  ```json
-  {
-    "request_id": "123e4567-e89b-12d3-a456-426614174000",
-    "status": "Processing"
-  }
-  ```
-- **📤 Response (Completed)**  
-  ```json
-  {
-    "request_id": "123e4567-e89b-12d3-a456-426614174000",
-    "status": "Completed",
-    "output_csv": "uploads/123e4567-e89b-12d3-a456-426614174000_processed.csv"
-  }
-  ```
-- **📌 Description:** Returns processing status; provides the processed CSV file link when complete.  
+```http
+POST /upload
+Content-Type: multipart/form-data
+```
 
----
+Form field: `file`
 
-### **3️⃣ Webhook (Triggered After Processing)**
-- **📍 Endpoint:** `POST <Webhook_URL>`  
-- **📩 Request Type:** `POST`  
-- **📤 Payload:**  
-  ```json
-  {
-    "request_id": "123e4567-e89b-12d3-a456-426614174000",
-    "output_csv": "uploads/123e4567-e89b-12d3-a456-426614174000_processed.csv"
-  }
-  ```
-- **📌 Description:** This webhook is automatically triggered after processing.
+Expected CSV columns:
 
----
-
-## **📝 Sample CSV File**
 ```csv
 Serial Number,Product Name,Input Image Urls
-1,SKU1,https://via.placeholder.com/300,https://via.placeholder.com/400
-2,SKU2,https://via.placeholder.com/600,https://via.placeholder.com/700
+1,SKU1,"https://example.com/image-1.jpg,https://example.com/image-2.jpg"
 ```
 
----
+Successful response:
 
-## **🛠 Setup & Installation**
-### **1️⃣ Clone the Repository**
-```sh
-git clone https://github.com/guru8880/assessment-1.git
-cd assessment-1
+```json
+{
+  "request_id": "123e4567-e89b-12d3-a456-426614174000"
+}
 ```
 
-### **2️⃣ Create & Activate a Virtual Environment**
-#### **🔹 Windows**
-```sh
+### Check job status
+
+```http
+GET /status/<request_id>
+```
+
+The response contains `Pending`, `Processing`, or `Completed`. Completed jobs also include the generated CSV path.
+
+## Tech Stack
+
+- Python
+- Flask and Flask-SQLAlchemy
+- Celery
+- Redis
+- SQLite
+- Pandas
+- Pillow
+- Requests
+
+## Project Structure
+
+```text
+.
+|-- app.py
+|-- celery_worker.py
+|-- config.py
+|-- models.py
+|-- tasks.py
+|-- webhook.py
+|-- sample.csv
+|-- requirements.txt
+|-- Asynchronous Image Processing API - Flask & SQLite.postman_collection.json
+`-- README.md
+```
+
+The `uploads/` directory and SQLite tables are created at runtime.
+
+## Installation
+
+```bash
+git clone https://github.com/guru8880/Asynchronous_Image_Processing-API.git
+cd Asynchronous_Image_Processing-API
 python -m venv venv
-venv\Scripts\activate
 ```
-#### **🔹 Linux/macOS**
-```sh
-python3 -m venv venv
+
+```bash
+# Windows
+venv\Scripts\activate
+
+# macOS/Linux
 source venv/bin/activate
 ```
 
-### **3️⃣ Install Dependencies**
-```sh
+```bash
 pip install -r requirements.txt
 ```
 
-### **4️⃣ Start Redis (Required for Celery)**
-#### **🔹 If using WSL/Linux**
-```sh
-redis-server
-```
-#### **🔹 If using Windows**
-- Install Redis via [Memurai](https://www.memurai.com/get-memurai)
-- Run:
-  ```sh
-  memurai-server.exe
-  ```
+Start Redis, then run the API and worker in separate terminals:
 
-### **5️⃣ Initialize the Database**
-```sh
-python -c "from app import db, app; with app.app_context(): db.create_all()"
-```
-
-### **6️⃣ Start Flask API**
-```sh
+```bash
 python app.py
 ```
 
-### **7️⃣ Start Celery Worker**
-```sh
-celery -A celery_worker worker --loglevel=info --pool=solo
+```bash
+celery -A celery_worker.celery worker --loglevel=info --pool=solo
 ```
 
-### **8️⃣ Test APIs in Postman**
-- **Upload CSV:** `POST http://127.0.0.1:5000/upload`
-- **Check Status:** `GET http://127.0.0.1:5000/status/<request_id>`
+The API is available at `http://127.0.0.1:5000`.
 
----
+Before processing real jobs, replace the placeholder `WEBHOOK_URL` in `webhook.py`.
 
-## **🎯 Troubleshooting**
-| **Issue** | **Solution** |
-|-----------|-------------|
-| Celery doesn’t process tasks | Use `--pool=solo` when starting Celery |
-| Redis not running | Start Redis using `redis-server` or `memurai-server.exe` |
-| Flask API not updating status | Ensure `app_context()` is used in `tasks.py` |
+## Current Limitations
 
----
+- output files are returned as local paths; there is no download endpoint or object storage
+- failed image downloads do not have retries or per-image error reporting
+- webhook configuration is hard-coded
+- SQLite and a local uploads directory are intended for development-scale use
+- uploaded URLs should be validated before exposing this service publicly
 
-## **🎯 Features Implemented**
-✔ **Flask API**  
-✔ **SQLite Database**  
-✔ **Asynchronous Image Processing with Celery**  
-✔ **CSV Parsing with Pandas**  
-✔ **Image Compression with Pillow**  
-✔ **Webhook Trigger after Processing**  
+## Future Improvements
 
----
-
-## **📌 Future Enhancements**
-- ✅ Migrate from SQLite to **PostgreSQL** or **MongoDB** for scalability  
-- ✅ Add **Docker Support**  
-- ✅ Implement **Retry Mechanism** for failed image downloads  
-
+- add Docker Compose for Flask, Redis, and Celery
+- introduce task retries, timeouts, and structured failure states
+- store images in cloud object storage
+- authenticate clients and validate input URLs
+- add automated API and worker tests
