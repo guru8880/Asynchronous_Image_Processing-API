@@ -1,4 +1,9 @@
 # Asynchronous Image Processing API
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0%3a11998e%2c100%3a38ef7d&height=230&section=header&text=Async+Image+Processing+API&fontSize=38&fontColor=ffffff&fontAlignY=35&desc=FastAPI+%7c+Queues+%7c+Background+Processing&descSize=16&descAlignY=55&animation=fadeIn" alt="Async Image Processing API project banner" width="100%" />
+</p>
+
+<p align="center"><em>Project-themed banner generated from an internet-hosted image service for a cleaner GitHub presentation.</em></p>
 
 A Flask and Celery backend that accepts image URLs in a CSV file, processes the images in the background, records job state in SQLite, and sends a completion webhook.
 
